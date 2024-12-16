@@ -100,6 +100,27 @@
         .ticket-tile a:hover {
             background-color: #0056b3;
         }
+
+        .load-more {
+            display: inline-block;
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 20px auto;
+        }
+
+        .load-more:disabled {
+            background-color: #d6d6d6;
+            cursor: not-allowed;
+        }
+
+        .load-more:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -111,30 +132,77 @@
         <input type="text" id="search-input" class="search-input" placeholder="Поиск вопросов..." oninput="searchTickets()">
     </div>
 
-    <div class="container" id="ticket-container">
-        {% for ticket in tickets %}
-            <div class="ticket-tile" data-question="{{ ticket.question | lower }}">
-                {% if ticket.image %}
-                    <img src="{{ url_for('image', ticket_id=ticket.id) }}" alt="Изображение к вопросу">
-                {% else %}
-                    <div style="height: 180px; background-color: #ddd;"></div> <!-- Заглушка -->
-                {% endif %}
-                <p>{{ ticket.question }}</p>
-                <a href="/ticket/{{ ticket.id }}">Подробнее</a>
-            </div>
-        {% endfor %}
-    </div>
+    <div class="container" id="ticket-container"></div>
+    <button class="load-more" id="load-more-button">Показать больше</button>
 
-    <script>
-        function searchTickets() {
-            let input = document.getElementById('search-input').value.toLowerCase();
-            let tickets = document.querySelectorAll('.ticket-tile');
+<script>
+    let currentPage = 1;
+    let currentSearch = ''; // Храним текущий поисковый запрос
 
+    // Функция загрузки вопросов
+    async function loadTickets() {
+        const button = document.getElementById('load-more-button');
+        button.disabled = true;
+
+        try {
+            // Запрашиваем билеты с учётом поискового запроса
+            const response = await fetch(`/load_tickets?page=${currentPage}&search=${encodeURIComponent(currentSearch)}`);
+            const tickets = await response.json();
+
+            const container = document.getElementById('ticket-container');
             tickets.forEach(ticket => {
-                let question = ticket.getAttribute('data-question');
-                ticket.style.display = question.includes(input) ? 'block' : 'none';
+                const ticketElement = document.createElement('div');
+                ticketElement.classList.add('ticket-tile');
+                ticketElement.setAttribute('data-question', ticket.question.toLowerCase());
+
+                ticketElement.innerHTML = `
+                    ${ticket.image ? `<img src="${ticket.image}" alt="Изображение к вопросу">` : '<div style="height: 180px; background-color: #ddd;"></div>'}
+                    <p>${ticket.question}</p>
+                    <a href="/ticket/${ticket.id}">Подробнее</a>
+                `;
+                container.appendChild(ticketElement);
             });
+
+            // Проверяем, есть ли ещё вопросы
+            if (tickets.length < 10) {
+                button.disabled = true;
+                button.textContent = "Все вопросы загружены";
+            } else {
+                currentPage++;
+                button.disabled = false;
+            }
+        } catch (error) {
+            console.error('Ошибка при загрузке вопросов:', error);
+            button.disabled = false;
         }
-    </script>
+    }
+
+    // Поиск по вопросам
+    function searchTickets() {
+        currentSearch = document.getElementById('search-input').value.toLowerCase(); // Сохраняем запрос
+
+        const tickets = document.querySelectorAll('.ticket-tile');
+
+        // Фильтруем билеты, которые уже загружены
+        tickets.forEach(ticket => {
+            const question = ticket.getAttribute('data-question');
+            ticket.style.display = question.includes(currentSearch) ? 'block' : 'none';
+        });
+
+        // Загружаем новые билеты с учётом поиска только при необходимости
+        if (currentSearch === '') {
+            // Если поиск пустой, перезагружаем билеты
+            currentPage = 1;
+            loadTickets();
+        }
+    }
+
+    // Инициализация
+    loadTickets();
+
+    // Клик по кнопке "Показать больше"
+    document.getElementById('load-more-button').addEventListener('click', loadTickets);
+</script>
+
 </body>
 </html>

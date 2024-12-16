@@ -1,15 +1,53 @@
-from flask import Flask, render_template, send_file
+from flask import Flask, render_template, send_file, request, jsonify, url_for
 import sqlite3
 from io import BytesIO
 
 app = Flask(__name__)
 
-
 # Database connection function
 def get_db_connection():
     conn = sqlite3.connect('pdd_tickets.db')
-    conn.row_factory = sqlite3.Row  # This allows us to access columns by name
+    conn.row_factory = sqlite3.Row
     return conn
+
+
+# Route to display a list of all tickets (initial load)
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
+@app.route('/load_tickets', methods=['GET'])
+def load_tickets():
+    page = int(request.args.get('page', 1))  # Получаем текущую страницу
+    search_query = request.args.get('search', '').lower()  # Получаем строку поиска
+    tickets_per_page = 21  # Количество вопросов на странице
+
+    # Если есть поисковый запрос, фильтруем по нему
+    query = 'SELECT * FROM tickets'
+    params = []
+
+    if search_query:
+        query += ' WHERE lower(question) LIKE ?'
+        params.append(f'%{search_query}%')
+
+    query += ' LIMIT ? OFFSET ?'
+    params.extend([tickets_per_page, (page - 1) * tickets_per_page])
+
+    conn = get_db_connection()
+    tickets = conn.execute(query, params).fetchall()
+    conn.close()
+
+    # Подготовим данные для отправки
+    ticket_data = []
+    for ticket in tickets:
+        ticket_data.append({
+            'id': ticket['id'],
+            'question': ticket['question'],
+            'image': url_for('image', ticket_id=ticket['id']) if ticket['image'] else None
+        })
+
+    return jsonify(ticket_data)  # Отправляем данные в формате JSON
 
 
 # Route to display a specific ticket (question)
@@ -19,29 +57,16 @@ def ticket(ticket_id):
     ticket = conn.execute('SELECT * FROM tickets WHERE id = ?', (ticket_id,)).fetchone()
     conn.close()
 
-    print(f"Ticket ID {ticket_id}: {ticket}")  # Debugging output to check the ticket data
-
     if ticket is None:
         return f"Ticket with ID {ticket_id} not found.", 404
 
     # Prepare the image (if available)
     image_data = ticket['image']
-    image = None
+    image_url = None
     if image_data:
-        image = BytesIO(image_data)
+        image_url = url_for('image', ticket_id=ticket_id)
 
-    return render_template('ticket.html', ticket=ticket, image=image)
-
-
-# Route to display a list of all tickets
-@app.route('/')
-def index():
-    conn = get_db_connection()
-    tickets = conn.execute('SELECT * FROM tickets').fetchall()
-    conn.close()
-
-    return render_template('index.html', tickets=tickets)
-
+    return render_template('ticket.html', ticket=ticket, image_url=image_url)
 
 # Route to serve images
 @app.route('/image/<int:ticket_id>')
@@ -56,6 +81,5 @@ def image(ticket_id):
         return "Image not found.", 404
 
 
-# Run the app
 if __name__ == '__main__':
     app.run(debug=True)
