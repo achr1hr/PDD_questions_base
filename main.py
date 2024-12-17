@@ -1,13 +1,14 @@
+import sys
 import subprocess
 import threading
 
 def run_parser():
     """Запускает парсер для обновления данных."""
-    subprocess.run(['python', 'parser.py'])
+    subprocess.run([sys.executable, 'parser.py'])
 
 def run_server():
     """Запускает сервер для обслуживания веб-страниц."""
-    subprocess.run(['python', 'server.py'])
+    subprocess.run([sys.executable, 'server.py'])
 
 def start_services():
     """Запускает парсер и сервер в отдельных потоках."""
