@@ -2,6 +2,8 @@ services:
   app:
     build: .
     container_name: pdd_question_base
+    volumes:
+      - .:/app
     ports:
       - "7777:7777"
     restart: always
