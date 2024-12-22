@@ -4,14 +4,14 @@ from io import BytesIO
 
 app = Flask(__name__)
 
-# Database connection function
+
 def get_db_connection():
     conn = sqlite3.connect('pdd_tickets.db')
     conn.row_factory = sqlite3.Row
     return conn
 
 
-# Route to display a list of all tickets (initial load)
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -19,11 +19,10 @@ def index():
 
 @app.route('/load_tickets', methods=['GET'])
 def load_tickets():
-    page = int(request.args.get('page', 1))  # Получаем текущую страницу
-    search_query = request.args.get('search', '').lower()  # Получаем строку поиска
-    tickets_per_page = 21  # Количество вопросов на странице
+    page = int(request.args.get('page', 1))
+    search_query = request.args.get('search', '').lower()
+    tickets_per_page = 21
 
-    # Если есть поисковый запрос, фильтруем по нему
     query = 'SELECT * FROM tickets'
     params = []
 
@@ -38,20 +37,16 @@ def load_tickets():
     tickets = conn.execute(query, params).fetchall()
     conn.close()
 
-    # Подготовим данные для отправки
     ticket_data = []
     for ticket in tickets:
-        print(ticket['question'])
         ticket_data.append({
             'id': ticket['id'],
             'question': ticket['question'],
             'image': url_for('image', ticket_id=ticket['id']) if ticket['image'] else None
         })
 
-    return jsonify(ticket_data)  # Отправляем данные в формате JSON
+    return jsonify(ticket_data)
 
-
-# Route to display a specific ticket (question)
 @app.route('/ticket/<int:ticket_id>')
 def ticket(ticket_id):
     conn = get_db_connection()
@@ -66,7 +61,7 @@ def ticket(ticket_id):
     return render_template('ticket.html', ticket=ticket, image_url=image_url)
 
 
-# Route to serve images
+
 @app.route('/image/<int:ticket_id>')
 def image(ticket_id):
     conn = get_db_connection()
@@ -78,6 +73,15 @@ def image(ticket_id):
     else:
         return "Image not found.", 404
 
+@app.route('/random_question', methods=['GET'])
+def random_question():
+    conn = get_db_connection()
+    question = conn.execute('SELECT id FROM tickets ORDER BY RANDOM() LIMIT 1').fetchone()
+    conn.close()
+    if question:
+        return jsonify({'id': question['id']})
+    else:
+        return jsonify({'error': 'Questions not found'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True)

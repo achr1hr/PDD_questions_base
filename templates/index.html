@@ -62,6 +62,7 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
             overflow: hidden;
             text-align: center;
+            position: relative;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
@@ -77,16 +78,23 @@
             border-bottom: 1px solid #ddd;
         }
 
-        .ticket-tile p {
-            margin: 10px 0;
-            padding: 0 10px;
+        .ticket-question {
             font-size: 14px;
             color: #333;
+            margin: 10px;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
         }
 
-        .ticket-tile a {
-            display: inline-block;
-            margin: 10px auto;
+        .more-btn {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
             padding: 10px 20px;
             text-decoration: none;
             background-color: #007BFF;
@@ -95,9 +103,11 @@
             font-size: 14px;
             font-weight: bold;
             transition: background-color 0.3s ease;
+            border: none;
+            cursor: pointer;
         }
 
-        .ticket-tile a:hover {
+        .more-btn:hover {
             background-color: #0056b3;
         }
 
@@ -108,7 +118,7 @@
             padding: 10px 20px;
             font-size: 1rem;
             border: none;
-            border-radius: 5px;
+            border-radius: 20px;
             cursor: pointer;
             margin: 20px auto;
         }
@@ -125,8 +135,12 @@
 </head>
 <body>
     <header>
-        <h1>База вопросов ПДД для экзамена в ГИБДД</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
+            <a href="#" id="random-question-button" style="text-decoration: none; color: #007BFF; background-color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px;">Случайный вопрос</a>
+            <h1 style="margin: 0;">База вопросов ПДД для экзамена в ГИБДД</h1>
+        </div>
     </header>
+
 
     <div class="search-bar">
         <input type="text" id="search-input" class="search-input" placeholder="Поиск вопросов..." oninput="searchTickets()">
@@ -140,67 +154,78 @@
     let currentSearch = ''; // Храним текущий поисковый запрос
 
     async function loadTickets() {
-    const button = document.getElementById('load-more-button');
-    button.disabled = true;
+        const button = document.getElementById('load-more-button');
+        button.disabled = true;
 
-    try {
-        // Подгружаем билеты с учетом поискового запроса
-        const response = await fetch(`/load_tickets?page=${currentPage}&search=${encodeURIComponent(currentSearch)}`);
-        const tickets = await response.json();
+        try {
+            // Подгружаем билеты с учетом поискового запроса
+            const response = await fetch(`/load_tickets?page=${currentPage}&search=${encodeURIComponent(currentSearch)}`);
+            const tickets = await response.json();
 
-        const container = document.getElementById('ticket-container');
+            const container = document.getElementById('ticket-container');
 
-        tickets.forEach(ticket => {
-            const ticketElement = document.createElement('div');
-            ticketElement.classList.add('ticket-tile');
-            ticketElement.setAttribute('data-question', ticket.question.toLowerCase());
+            tickets.forEach(ticket => {
+                const ticketElement = document.createElement('div');
+                ticketElement.classList.add('ticket-tile');
+                ticketElement.setAttribute('data-question', ticket.question.toLowerCase());
 
-            ticketElement.innerHTML = `
-                ${ticket.image ? `<img src="${ticket.image}" alt="Изображение к вопросу">` : '<div style="height: 180px; background-color: #ddd;"></div>'}
-                <p>${ticket.question}</p>
-                <a href="/ticket/${ticket.id}">Подробнее</a>
-            `;
-            container.appendChild(ticketElement);
-        });
+                ticketElement.innerHTML = `
+                    ${ticket.image ? `<img src="${ticket.image}" alt="Изображение к вопросу">` : '<div style="height: 180px; background-color: #ddd;"></div>'}
+                    <div class="ticket-question">${ticket.question}</div>
+                    <button class="more-btn" onclick="window.location.href='/ticket/${ticket.id}'">Подробнее</button>
+                `;
+                container.appendChild(ticketElement);
+            });
 
-        if (tickets.length < 10) {
-            button.disabled = true;
-            button.textContent = "Все вопросы загружены";
-        } else {
-            currentPage++;
+            if (tickets.length < 10) {
+                button.disabled = true;
+                button.textContent = "Все вопросы загружены";
+            } else {
+                currentPage++;
+                button.disabled = false;
+                button.textContent = "Показать больше";
+            }
+        } catch (error) {
+            console.error('Ошибка при загрузке вопросов:', error);
             button.disabled = false;
-            button.textContent = "Показать больше";
         }
-    } catch (error) {
-        console.error('Ошибка при загрузке вопросов:', error);
-        button.disabled = false;
     }
-}
 
+    function searchTickets() {
+        currentSearch = document.getElementById('search-input').value.toLowerCase(); // Сохраняем запрос
 
-function searchTickets() {
-    currentSearch = document.getElementById('search-input').value.toLowerCase(); // Сохраняем запрос
-
-    const tickets = document.querySelectorAll('.ticket-tile');
-
-    // Фильтруем билеты, которые уже загружены
-    tickets.forEach(ticket => {
-        const question = ticket.getAttribute('data-question');
-        ticket.style.display = question.includes(currentSearch) ? 'block' : 'none';
-    });
-
-    // Загружаем новые билеты с учётом поиска только при необходимости
-    currentPage = 1;
         const container = document.getElementById('ticket-container');
         container.innerHTML = ''; // Очищаем контейнер перед загрузкой новых билетов
+        currentPage = 1; // Сбрасываем страницу
         loadTickets();
-}
+    }
 
-// Инициализация
-loadTickets();
+    // Инициализация
+    loadTickets();
 
-// Обработчик клика по кнопке "Показать больше"
-document.getElementById('load-more-button').addEventListener('click', loadTickets);
+    // Обработчик клика по кнопке "Показать больше"
+    document.getElementById('load-more-button').addEventListener('click', loadTickets);
+
+    document.getElementById('random-question-button').addEventListener('click', async (event) => {
+    event.preventDefault();
+        try {
+            const response = await fetch('/random_question');
+            if (response.ok) {
+                const data = await response.json();
+                window.location.href = `/ticket/${data.id}`;
+            } else {
+                console.error('Ошибка получения случайного вопроса');
+            }
+        } catch (error) {
+            console.error('Ошибка запроса:', error);
+        }
+    });
+
+
+
+
+
+
 </script>
 
 </body>
