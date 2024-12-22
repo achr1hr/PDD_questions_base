@@ -1,0 +1,7 @@
+services:
+  app:
+    build: .
+    container_name: pdd_question_base
+    ports:
+      - "7777:7777"
+    restart: always
