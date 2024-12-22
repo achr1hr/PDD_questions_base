@@ -14,6 +14,7 @@ cursor.execute('''
 CREATE TABLE IF NOT EXISTS tickets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     question TEXT UNIQUE,
+    question_lower TEXT UNIQUE,
     correct_answer TEXT,
     image BLOB,
     explanation TEXT
@@ -37,6 +38,15 @@ def save_image(image_url):
         return None
 
 
+def clean_answer(answer):
+    """Removes the number prefix (e.g., '1.', '2.', '3.') from the correct answer."""
+    # Check if the first 3 characters are digits followed by a dot and space (e.g., '1. ', '2. ', etc.)
+    if answer[0].isdigit() and answer[1] == '.' and answer[2] == ' ':
+        return answer[3:].strip()  # Remove the first 3 characters and return the rest
+    return answer.strip()  # If no prefix, return the answer as is
+
+
+
 def parse_ticket_page(ticket_url):
     """Scrapes a single ticket page and saves data."""
     try:
@@ -47,13 +57,18 @@ def parse_ticket_page(ticket_url):
         # Find all questions on the page (this assumes that all questions have the same structure)
         question_tags = soup.find_all('div', style="padding:5px; font-weight: bold;")
         answer_tags = soup.find_all('div', style="padding:5px; color: forestgreen; font-weight: bold;")
-        image_tags = soup.find_all('div', style="margin: 0 auto !important; float: none !important; display: block; width:auto; max-width:725px;")
+        image_tags = soup.find_all('div',
+                                   style="margin: 0 auto !important; float: none !important; display: block; width:auto; max-width:725px;")
         explanation_tags = soup.find_all('div', id=lambda x: x and x.startswith('idDivHint'))
 
         # Loop through all questions, answers, and explanations (assuming there are the same number of each)
-        for question_tag, answer_tag, image_tag, explanation_tag in zip(question_tags, answer_tags, image_tags, explanation_tags):
+        for question_tag, answer_tag, image_tag, explanation_tag in zip(question_tags, answer_tags, image_tags,
+                                                                        explanation_tags):
             question = question_tag.text.strip() if question_tag else 'No question found'
             correct_answer = answer_tag.text.strip() if answer_tag else 'No answer found'
+
+            # Clean the correct answer to remove the number prefix (e.g., '1.', '2.', etc.)
+            correct_answer = clean_answer(correct_answer)
 
             # Extract the image URL (if it exists)
             image_url = None
@@ -87,9 +102,9 @@ def parse_ticket_page(ticket_url):
             else:
                 # Insert a new record if it doesn't exist
                 cursor.execute('''
-                    INSERT INTO tickets (question, correct_answer, image, explanation)
-                    VALUES (?, ?, ?, ?)
-                ''', (question, correct_answer, image_data, explanation))
+                    INSERT INTO tickets (question, question_lower, correct_answer, image, explanation)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (question, question.lower(), correct_answer, image_data, explanation))
 
             conn.commit()
 

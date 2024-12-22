@@ -28,7 +28,7 @@ def load_tickets():
     params = []
 
     if search_query:
-        query += ' WHERE lower(question) LIKE ?'
+        query += ' WHERE question_lower LIKE ?'
         params.append(f'%{search_query}%')
 
     query += ' LIMIT ? OFFSET ?'
@@ -41,6 +41,7 @@ def load_tickets():
     # Подготовим данные для отправки
     ticket_data = []
     for ticket in tickets:
+        print(ticket['question'])
         ticket_data.append({
             'id': ticket['id'],
             'question': ticket['question'],
