@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     question TEXT UNIQUE,
     correct_answer TEXT,
-    image BLOB
+    image BLOB,
+    explanation TEXT
 )
 ''')
 conn.commit()
@@ -47,9 +48,10 @@ def parse_ticket_page(ticket_url):
         question_tags = soup.find_all('div', style="padding:5px; font-weight: bold;")
         answer_tags = soup.find_all('div', style="padding:5px; color: forestgreen; font-weight: bold;")
         image_tags = soup.find_all('div', style="margin: 0 auto !important; float: none !important; display: block; width:auto; max-width:725px;")
+        explanation_tags = soup.find_all('div', id=lambda x: x and x.startswith('idDivHint'))
 
-        # Loop through all questions and answers (assuming there are the same number of each)
-        for question_tag, answer_tag, image_tag in zip(question_tags, answer_tags, image_tags):
+        # Loop through all questions, answers, and explanations (assuming there are the same number of each)
+        for question_tag, answer_tag, image_tag, explanation_tag in zip(question_tags, answer_tags, image_tags, explanation_tags):
             question = question_tag.text.strip() if question_tag else 'No question found'
             correct_answer = answer_tag.text.strip() if answer_tag else 'No answer found'
 
@@ -66,6 +68,9 @@ def parse_ticket_page(ticket_url):
             if image_url:
                 image_data = save_image(image_url)
 
+            # Extract the explanation (if it exists)
+            explanation = explanation_tag.text.strip() if explanation_tag else 'No explanation found'
+
             # Check if the question already exists in the database
             cursor.execute('''
                 SELECT id FROM tickets WHERE question = ?
@@ -76,15 +81,15 @@ def parse_ticket_page(ticket_url):
                 # Update the existing record if it exists
                 cursor.execute('''
                     UPDATE tickets
-                    SET correct_answer = ?, image = ?
+                    SET correct_answer = ?, image = ?, explanation = ?
                     WHERE id = ?
-                ''', (correct_answer, image_data, existing_ticket[0]))
+                ''', (correct_answer, image_data, explanation, existing_ticket[0]))
             else:
                 # Insert a new record if it doesn't exist
                 cursor.execute('''
-                    INSERT INTO tickets (question, correct_answer, image)
-                    VALUES (?, ?, ?)
-                ''', (question, correct_answer, image_data))
+                    INSERT INTO tickets (question, correct_answer, image, explanation)
+                    VALUES (?, ?, ?, ?)
+                ''', (question, correct_answer, image_data, explanation))
 
             conn.commit()
 

@@ -72,6 +72,30 @@
         .back-link:hover {
             color: #0056b3;
         }
+
+        .explanation {
+            background-color: #f9f9f9;
+            border: 2px solid #007BFF;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .explanation strong {
+            color: #007BFF;
+            font-size: 1.2rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .explanation p {
+            font-size: 1rem;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+        }
+
     </style>
 </head>
 <body>
@@ -87,7 +111,13 @@
         <div class="answer">
             <strong>Правильный ответ:</strong> {{ ticket.correct_answer }}
         </div>
+        <div class="explanation">
+            <strong>Пояснение:</strong>
+            <p>{{ ticket.explanation }}</p>
+        </div>
+
         <a href="/" class="back-link">Вернуться к списку вопросов</a>
     </div>
+
 </body>
 </html>

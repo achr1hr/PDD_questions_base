@@ -60,13 +60,10 @@ def ticket(ticket_id):
     if ticket is None:
         return f"Ticket with ID {ticket_id} not found.", 404
 
-    # Prepare the image (if available)
-    image_data = ticket['image']
-    image_url = None
-    if image_data:
-        image_url = url_for('image', ticket_id=ticket_id)
+    image_url = url_for('image', ticket_id=ticket_id) if ticket['image'] else None
 
     return render_template('ticket.html', ticket=ticket, image_url=image_url)
+
 
 # Route to serve images
 @app.route('/image/<int:ticket_id>')
