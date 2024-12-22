@@ -10,4 +10,4 @@ docker-compose up --build -d
 docker exec pdd_question_base python parser.py
 
 # Готово
-echo "Сервис успешно запущен. Доступен на http://localhost:5000"
+echo "Сервис успешно запущен. Доступен на http://localhost:7777"
