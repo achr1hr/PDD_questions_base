@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>База вопросов ПДД для экзамена в ГИБДД</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        header {
+            background-color: #007BFF;
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 20px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .search-bar {
+            margin: 20px auto;
+            width: 80%;
+            max-width: 500px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 25px;
+            border: 1px solid #ddd;
+            outline: none;
+            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-input:focus {
+            border-color: #007BFF;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .ticket-tile {
+            width: 240px;
+            height: 340px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            text-align: center;
+            position: relative;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .ticket-tile:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .ticket-tile img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .ticket-question {
+            font-size: 14px;
+            color: #333;
+            margin: 10px;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+        }
+
+        .more-btn {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            text-decoration: none;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .more-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .load-more {
+            display: inline-block;
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            margin: 20px auto;
+        }
+
+        .load-more:disabled {
+            background-color: #d6d6d6;
+            cursor: not-allowed;
+        }
+
+        .load-more:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
+            <a href="#" id="random-question-button" style="text-decoration: none; color: #007BFF; background-color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px;">Случайный вопрос</a>
+            <h1 style="margin: 0;">База вопросов ПДД для экзамена в ГИБДД</h1>
+        </div>
+    </header>
+
+
+    <div class="search-bar">
+        <input type="text" id="search-input" class="search-input" placeholder="Поиск вопросов..." oninput="searchTickets()">
+    </div>
+
+    <div class="container" id="ticket-container"></div>
+    <button class="load-more" id="load-more-button">Показать больше</button>
+
+<script>
+    let currentPage = 1;
+    let currentSearch = ''; // Храним текущий поисковый запрос
+
+    async function loadTickets() {
+        const button = document.getElementById('load-more-button');
+        button.disabled = true;
+
+        try {
+            // Подгружаем билеты с учетом поискового запроса
+            const response = await fetch(`/load_tickets?page=${currentPage}&search=${encodeURIComponent(currentSearch)}`);
+            const tickets = await response.json();
+
+            const container = document.getElementById('ticket-container');
+
+            tickets.forEach(ticket => {
+                const ticketElement = document.createElement('div');
+                ticketElement.classList.add('ticket-tile');
+                ticketElement.setAttribute('data-question', ticket.question.toLowerCase());
+
+                ticketElement.innerHTML = `
+                    ${ticket.image ? `<img src="${ticket.image}" alt="Изображение к вопросу">` : '<div style="height: 180px; background-color: #ddd;"></div>'}
+                    <div class="ticket-question">${ticket.question}</div>
+                    <button class="more-btn" onclick="window.location.href='/ticket/${ticket.id}'">Подробнее</button>
+                `;
+                container.appendChild(ticketElement);
+            });
+
+            if (tickets.length < 10) {
+                button.disabled = true;
+                button.textContent = "Все вопросы загружены";
+            } else {
+                currentPage++;
+                button.disabled = false;
+                button.textContent = "Показать больше";
+            }
+        } catch (error) {
+            console.error('Ошибка при загрузке вопросов:', error);
+            button.disabled = false;
+        }
+    }
+
+    function searchTickets() {
+        currentSearch = document.getElementById('search-input').value.toLowerCase(); // Сохраняем запрос
+
+        const container = document.getElementById('ticket-container');
+        container.innerHTML = ''; // Очищаем контейнер перед загрузкой новых билетов
+        currentPage = 1; // Сбрасываем страницу
+        loadTickets();
+    }
+
+    // Инициализация
+    loadTickets();
+
+    // Обработчик клика по кнопке "Показать больше"
+    document.getElementById('load-more-button').addEventListener('click', loadTickets);
+
+    document.getElementById('random-question-button').addEventListener('click', async (event) => {
+    event.preventDefault();
+        try {
+            const response = await fetch('/random_question');
+            if (response.ok) {
+                const data = await response.json();
+                window.location.href = `/ticket/${data.id}`;
+            } else {
+                console.error('Ошибка получения случайного вопроса');
+            }
+        } catch (error) {
+            console.error('Ошибка запроса:', error);
+        }
+    });
+
+
+
+
+
+
+</script>
+
+</body>
+</html>
